@@ -12,8 +12,6 @@ from tensorflow  import Sequential
 
 
 
-
-
 # initialize OpenAI API
 openai.api_key = "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"
 
@@ -24,12 +22,6 @@ def sentiment_analysis(text):
     doc = nlp(text)
     sentiment = doc.sentiment
     return sentiment
-
-# read academic questions from text file
-def read_questions_from_file(file_path):
-    with open(file_path, 'r') as f:
-        questions = f.read().splitlines()
-    return questions
 
 # define function to search for relevant information
 def search_for_info(question):
@@ -61,9 +53,9 @@ def select_most_relevant_info(info):
 def generate_answer(X):
     # use GPT API to generate answer
     answer = openai.Completion.create(
-        engine="davinci",
+        engine="text-davinci-003",
         prompt=X,
-        max_tokens=1024,
+        max_tokens=4096,
         n=1,
         stop=None,
         temperature=0.5,
@@ -103,12 +95,7 @@ def combine_question_and_info(question, info):
     new_question = question + " " + info
     return new_question
 
-
-
 def main():
-    # read academic questions from text file
-    questions = read_questions_from_file("questions.txt")
-
     # initialize TfidfVectorizer
     vectorizer = TfidfVectorizer()
 
@@ -120,30 +107,33 @@ def main():
             corpus.append(text)
     vectorizer.fit(corpus)
 
-    # iterate over questions
-    for question in questions:
-        # search for relevant information
-        info = search_for_info(question)
-        # select most relevant information
-        relevant_info = select_most_relevant_info(info)
-        # combine question and relevant information
-        new_question = combine_question_and_info(question, relevant_info)
+    # ask for user input
+    question = input("What is your question? ")
 
-        # generate feature vector using TF-IDF
-        X = vectorizer.transform([new_question])
+    # search for relevant information
+    info = search_for_info(question)
+    # select most relevant information
+    relevant_info = select_most_relevant_info(info)
+    # combine question and relevant information
+    new_question = combine_question_and_info(question, relevant_info)
 
-        # generate answer
-        answers = []
-        for i in range(3):  # run GPT API multiple times
-            answer = generate_answer(X)
-            answers.append(answer)
+    # generate feature vector using TF-IDF
+    X = vectorizer.transform([new_question])
 
-        # select best answer
-        best_answer = select_best_answer(answers)
+    # generate answer
+    answers = []
+    for i in range(3):  # run GPT API multiple times
+        answer = generate_answer(X)
+        answers.append(answer)
 
-        # print best answer
-        print("Q:", question)
-        print("A:", best_answer)
+    # select best answer
+    best_answer = select_best_answer(answers)
+
+    # print best answer
+    print("Q:", question)
+    print("A:", best_answer)
+
+
 
 if __name__ == "__main__":
     main()
