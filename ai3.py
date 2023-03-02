@@ -1,19 +1,17 @@
 import googlesearch
 import requests
 import bs4
-import tensorflow as tf
+import torch
 import sklearn 
 import spacy
 import openai
 import numpy as np
 import os
 from sklearn.feature_extraction.text import TfidfVectorizer
-from tensorflow  import Sequential
-
-
+from torch import nn, optim
 
 # initialize OpenAI API
-openai.api_key = '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'
+openai.api_key = "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"
 
 # perform sentiment analysis
 def sentiment_analysis(text):
@@ -65,35 +63,49 @@ def generate_answer(X):
 # define function to train neural network
 def train_neural_network():
     # use past question-answer pairs to train neural network
-    model = Sequential([
-        tf.keras.layers.Dense(64, activation='relu'),
-        tf.keras.layers.Dense(32, activation='relu'),
-        tf.keras.layers.Dense(1, activation='sigmoid')
-    ])
-    model.compile(optimizer='adam', loss='binary_crossentropy')
-    X = [] # list of features
-    y = [] # list of labels
-    model.fit(X, y, epochs=10)
+    model = nn.Sequential(
+        nn.Linear(64, 128),
+        nn.ReLU(),
+        nn.Linear(128, 64),
+        nn.ReLU(),
+        nn.Linear(64, 1),
+        nn.Sigmoid()
+    )
+    criterion = nn.BCELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    X = torch.tensor([]) # tensor of features
+    y = torch.tensor([]) # tensor of labels
+    for epoch in range(10):
+        running_loss = 0
+        for i in range(len(X)):
+            optimizer.zero_grad()
+            output = model(X[i])
+            loss = criterion(output, y[i])
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+        print("Epoch:", epoch+1, "Loss:", running_loss/len(X))
     return model
 
 # define function to select best answer
+
 def select_best_answer(answers):
     # use neural network to select best answer from multiple runs of GPT API
     model = train_neural_network()
     scores = []
     for answer in answers:
-        X = [] # list of features
-        score = model.predict(X)
-        scores.append(score)
-    best_index = scores.index(max(scores))
-    best_answer = answers[best_index]
+        X = torch.tensor([sentiment_analysis(answer),
+                          select_most_relevant_info(search_for_info(answer))])
+        score = model(X)
+        scores.append(score.item())
+    best_answer = answers[np.argmax(scores)]
     return best_answer
-
 # define function to combine question and relevant information
 def combine_question_and_info(question, info):
     # combine question and information
     new_question = question + " " + info
     return new_question
+
 
 def main():
     # initialize TfidfVectorizer
